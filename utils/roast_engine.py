@@ -12,7 +12,7 @@ def _client(api_key: str):
 
 def _call(api_key: str, system: str, user: str, max_tokens: int = 200) -> str:
     msg = _client(api_key).messages.create(
-        model="claude-haiku-4-5-20251001",
+        model="claude-haiku-4-5",
         max_tokens=max_tokens,
         system=system,
         messages=[{"role": "user", "content": user}],
