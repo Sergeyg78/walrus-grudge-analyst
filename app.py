@@ -26,75 +26,473 @@ from utils.leaderboard import get_leaderboard, update_leaderboard, get_leaderboa
 from utils.wc2026_data import ALL_TEAMS, NOTABLE_MATCHES, TOURNAMENT_INFO
 
 # ══════════════════════════════════════════════════════════════════════════════
-# CSS
+# CSS — WC2026 Stadium Visual Theme (Full Upgrade)
 # ══════════════════════════════════════════════════════════════════════════════
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Oswald:wght@400;600;700&family=Inter:wght@300;400;600;700;900&display=swap');
+
 html,body,[class*="css"]{font-family:'Inter',sans-serif;}
 
-.stApp{background:linear-gradient(135deg,#0a0e1a 0%,#0d1b2a 40%,#1a0a2e 100%);color:#e8eaf6;}
+/* ═══════════════════════════════════════════
+   BACKGROUND — pitch texture + floodlight glow
+   ═══════════════════════════════════════════ */
+.stApp {
+  background-color: #05080d;
+  background-image:
+    /* grass stripe bands */
+    repeating-linear-gradient(
+      180deg,
+      transparent 0px, transparent 48px,
+      rgba(0,60,20,.18) 48px, rgba(0,60,20,.18) 96px
+    ),
+    /* diagonal pitch lines */
+    repeating-linear-gradient(
+      -45deg,
+      transparent 0px, transparent 80px,
+      rgba(255,255,255,.012) 80px, rgba(255,255,255,.012) 81px
+    ),
+    /* stadium arc floodlights */
+    radial-gradient(ellipse 80% 40% at 50% -5%, rgba(255,240,160,.07) 0%, transparent 70%),
+    /* corner glow — USA red */
+    radial-gradient(ellipse at 0% 100%, rgba(178,34,52,.18) 0%, transparent 50%),
+    /* corner glow — USA blue */
+    radial-gradient(ellipse at 100% 0%, rgba(0,40,104,.22) 0%, transparent 50%),
+    /* deep base */
+    linear-gradient(180deg, #05080d 0%, #060d0a 60%, #080510 100%);
+  color: #dde8e2;
+  min-height: 100vh;
+}
 
-.hero{background:linear-gradient(90deg,#1565c0 0%,#6a1b9a 50%,#ad1457 100%);
-  border-radius:16px;padding:28px 32px;margin-bottom:20px;text-align:center;
-  box-shadow:0 8px 32px rgba(21,101,192,.4);}
-.hero h1{font-size:2.2rem;font-weight:900;color:#fff;margin:0;}
-.hero p{font-size:1rem;color:rgba(255,255,255,.8);margin:6px 0 0;}
+/* ═══════════════════════════════════════════
+   HERO — scoreboard + stadium lights
+   ═══════════════════════════════════════════ */
+.hero {
+  position: relative; overflow: hidden;
+  background:
+    linear-gradient(160deg, #0d1a0e 0%, #001035 45%, #1a000d 100%);
+  border-radius: 20px;
+  padding: 0;
+  margin-bottom: 6px;
+  box-shadow:
+    0 0 0 1px rgba(255,255,255,.08),
+    0 0 40px rgba(0,40,104,.5),
+    0 0 80px rgba(0,80,30,.25),
+    inset 0 1px 0 rgba(255,255,255,.06);
+}
 
-.stat-row{display:flex;gap:12px;margin-bottom:20px;flex-wrap:wrap;}
-.stat-card{flex:1;min-width:110px;background:rgba(255,255,255,.06);
-  border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:14px;text-align:center;}
-.stat-card .val{font-size:1.9rem;font-weight:900;}
-.stat-card .lbl{font-size:.72rem;color:rgba(255,255,255,.5);text-transform:uppercase;letter-spacing:1px;}
-.green{color:#69f0ae;}.red{color:#ff5252;}.yellow{color:#ffd740;}.blue{color:#40c4ff;}.purple{color:#ce93d8;}
+/* stadium arc lights top-left and top-right */
+.hero::before {
+  content:'';
+  position:absolute; inset:0; pointer-events:none;
+  background:
+    conic-gradient(from 230deg at 5% -10%,  rgba(255,248,200,.14) 0deg, transparent 18deg),
+    conic-gradient(from 310deg at 95% -10%,  rgba(255,248,200,.12) 0deg, transparent 18deg),
+    conic-gradient(from 200deg at -5% 110%,  rgba(178,34,52,.10)   0deg, transparent 22deg),
+    conic-gradient(from 340deg at 105% 110%, rgba(0,40,104,.12)    0deg, transparent 22deg);
+}
+/* pitch centre-circle echo */
+.hero::after {
+  content:'';
+  position:absolute;
+  width:420px; height:420px;
+  border:1.5px solid rgba(255,255,255,.04);
+  border-radius:50%;
+  top:50%; left:50%;
+  transform:translate(-50%,-50%);
+  pointer-events:none;
+}
 
-.roast-bubble{background:linear-gradient(135deg,#b71c1c,#880e4f);border-radius:12px;
-  padding:16px 20px;border-left:4px solid #ff5252;color:#fff;margin:12px 0;
-  box-shadow:0 4px 16px rgba(183,28,28,.3);}
-.praise-bubble{background:linear-gradient(135deg,#1b5e20,#004d40);border-radius:12px;
-  padding:16px 20px;border-left:4px solid #69f0ae;color:#fff;margin:12px 0;}
-.debate-bubble{background:linear-gradient(135deg,#1a237e,#4a148c);border-radius:12px;
-  padding:16px 20px;border-left:4px solid #7986cb;color:#fff;margin:12px 0;}
-.info-bubble{background:rgba(255,255,255,.05);border-radius:12px;
-  padding:16px 20px;border-left:4px solid #40c4ff;color:#e8eaf6;margin:12px 0;}
+/* USA tri-stripe bar across very top */
+.hero-stripe {
+  height: 5px;
+  background: linear-gradient(90deg, #b22234 33.3%, #fff 33.3%, #fff 36%, #002868 36%);
+  border-radius: 20px 20px 0 0;
+}
 
-.pred-row{display:flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;
-  margin-bottom:7px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);
-  flex-wrap:wrap;}
-.badge{padding:3px 10px;border-radius:20px;font-size:.7rem;font-weight:700;
-  text-transform:uppercase;white-space:nowrap;}
-.badge-pending{background:#f57f17;color:#fff;}
-.badge-correct{background:#2e7d32;color:#fff;}
-.badge-wrong{background:#c62828;color:#fff;}
+.hero-inner {
+  padding: 28px 32px 26px;
+  position: relative; z-index:1;
+  text-align: center;
+}
 
-.blob-box{background:rgba(0,0,0,.4);border:1px solid #37474f;border-radius:8px;
-  padding:10px 14px;font-family:monospace;font-size:.78rem;color:#80cbc4;word-break:break-all;}
+/* ball — subtle bounce */
+.hero-ball {
+  font-size: 3rem; display:block; margin-bottom:8px;
+  animation: ballbounce 3s ease-in-out infinite;
+  filter: drop-shadow(0 0 18px rgba(255,255,255,.45));
+}
+@keyframes ballbounce {
+  0%,100% { transform: translateY(0) rotate(0deg); }
+  30%     { transform: translateY(-8px) rotate(12deg); }
+  60%     { transform: translateY(-4px) rotate(-6deg); }
+}
 
-.lb-row{display:flex;align-items:center;gap:10px;padding:10px 14px;border-radius:10px;
-  margin-bottom:6px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.08);}
-.lb-rank{font-size:1.3rem;font-weight:900;min-width:36px;}
-.lb-name{font-weight:700;flex:1;}
-.lb-stat{font-size:.82rem;color:#90caf9;}
+/* scoreboard title */
+.hero h1 {
+  font-family: 'Bebas Neue', 'Oswald', sans-serif;
+  font-size: 3rem; font-weight: 400; letter-spacing: 4px;
+  color: #fff; margin: 0;
+  text-shadow:
+    0 0 40px rgba(255,240,160,.5),
+    0 0 80px rgba(255,240,160,.2),
+    3px 3px 0 rgba(0,0,0,.6);
+  text-transform: uppercase;
+}
 
-.network-badge{display:inline-block;padding:3px 10px;border-radius:20px;font-size:.7rem;
-  font-weight:700;text-transform:uppercase;letter-spacing:1px;}
-.testnet{background:#e65100;color:#fff;}
-.mainnet{background:#2e7d32;color:#fff;}
+.hero .subtitle {
+  font-size: .9rem; color: rgba(255,255,255,.65);
+  margin: 8px 0 14px; letter-spacing: .8px;
+}
 
-.autosave-dot{display:inline-block;width:8px;height:8px;border-radius:50%;
-  background:#69f0ae;margin-right:6px;animation:pulse 2s infinite;}
-@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+/* pill badges */
+.hero-badges { display:flex; gap:8px; justify-content:center; flex-wrap:wrap; }
+.hero-badge {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.2);
+  border-radius: 20px; padding: 4px 14px;
+  font-size: .68rem; font-weight: 700; letter-spacing: 1.2px;
+  color: #fff; text-transform: uppercase;
+  backdrop-filter: blur(6px);
+}
+.hero-badge.usa  { border-color:rgba(178,34,52,.6);  background:rgba(178,34,52,.2);  }
+.hero-badge.wc   { border-color:rgba(255,215,0,.5);  background:rgba(255,215,0,.1);  color:#ffd700; }
+.hero-badge.walrus { border-color:rgba(0,188,212,.4);background:rgba(0,188,212,.1);color:#80deea; }
 
-[data-testid="stSidebar"]{background:rgba(10,14,26,.97)!important;
-  border-right:1px solid rgba(255,255,255,.08);min-width:270px!important;}
-.stTextInput>div>div>input,.stSelectbox>div>div,.stTextArea textarea{
-  background:rgba(255,255,255,.06)!important;border:1px solid rgba(255,255,255,.15)!important;
-  color:#e8eaf6!important;border-radius:8px!important;}
-.stButton>button{background:linear-gradient(90deg,#1565c0,#6a1b9a);color:#fff;
-  border:none;border-radius:8px;font-weight:700;padding:10px 20px;transition:opacity .2s;}
-.stButton>button:hover{opacity:.85;}
-#MainMenu,footer{visibility:hidden;}
-.block-container{padding-top:1.4rem;padding-bottom:2rem;}
+/* ═══════════════════════════════════════════
+   LIVE TICKER
+   ═══════════════════════════════════════════ */
+.ticker-wrap {
+  position: relative; overflow:hidden;
+  background: linear-gradient(90deg, #b22234 0%, #b22234 8%,
+    #002868 8%, #002868 92%, #006633 92%);
+  border-radius: 8px; padding: 8px 0; margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,.1);
+  box-shadow: 0 2px 12px rgba(0,0,0,.4);
+}
+.ticker-wrap::before {
+  content:'⚽ LIVE';
+  position:absolute; left:0; top:0; bottom:0; z-index:2;
+  background:#ffd700; color:#000;
+  font-size:.68rem; font-weight:900; letter-spacing:1px;
+  padding:0 10px; display:flex; align-items:center;
+  border-radius:8px 0 0 8px;
+}
+.ticker-inner {
+  display:inline-block; padding-left:calc(100% + 70px);
+  animation: ticker 36s linear infinite;
+  font-size:.75rem; font-weight:700; color:#fff;
+  letter-spacing:1.2px; text-transform:uppercase; white-space:nowrap;
+}
+@keyframes ticker { 0%{transform:translateX(0)} 100%{transform:translateX(-100%)} }
+
+/* ═══════════════════════════════════════════
+   STAT CARDS — scoreboard flip aesthetic
+   ═══════════════════════════════════════════ */
+.stat-row { display:flex; gap:10px; margin-bottom:20px; flex-wrap:wrap; }
+.stat-card {
+  flex:1; min-width:100px;
+  background: linear-gradient(160deg, rgba(255,255,255,.06), rgba(0,0,0,.2));
+  border: 1px solid rgba(255,255,255,.08);
+  border-bottom: 3px solid var(--card-accent,#69f0ae);
+  border-radius: 10px; padding: 14px 8px; text-align:center;
+  box-shadow: 0 4px 20px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
+  transition: transform .2s, box-shadow .2s;
+  position: relative; overflow:hidden;
+}
+.stat-card::before {
+  content:'';
+  position:absolute; left:0; right:0; top:50%; height:1px;
+  background: rgba(255,255,255,.04);
+}
+.stat-card:hover { transform:translateY(-3px); box-shadow:0 8px 28px rgba(0,0,0,.5); }
+.stat-card .val {
+  font-family:'Bebas Neue','Oswald',sans-serif;
+  font-size:2.1rem; font-weight:400; letter-spacing:1px; line-height:1;
+}
+.stat-card .lbl {
+  font-size:.62rem; color:rgba(255,255,255,.4);
+  text-transform:uppercase; letter-spacing:1.4px; margin-top:5px;
+}
+.green  { color:#69f0ae; } .red   { color:#ff5252; }
+.yellow { color:#ffd740; } .blue  { color:#40c4ff; }
+.purple { color:#ce93d8; } .orange{ color:#ffb74d; }
+
+/* ═══════════════════════════════════════════
+   AGENT BUBBLES
+   ═══════════════════════════════════════════ */
+.roast-bubble {
+  position:relative;
+  background: linear-gradient(135deg, rgba(183,28,28,.9), rgba(120,0,60,.9));
+  border-radius: 14px; padding: 18px 20px 18px 24px;
+  border-left: 5px solid #ff1744; color: #fff; margin: 14px 0;
+  box-shadow: 0 6px 28px rgba(183,28,28,.4), inset 0 1px 0 rgba(255,255,255,.08);
+  font-size: .97rem; line-height: 1.65;
+  animation: roast-in .3s ease-out;
+}
+@keyframes roast-in {
+  from { transform: scale(.97) translateY(6px); opacity:.5; }
+  to   { transform: scale(1)   translateY(0);   opacity:1; }
+}
+.roast-bubble .bubble-label {
+  font-family:'Oswald',sans-serif; font-size:.65rem;
+  letter-spacing:2px; text-transform:uppercase;
+  color:rgba(255,255,255,.55); margin-bottom:6px;
+  display:flex; align-items:center; gap:6px;
+}
+.roast-bubble .bubble-label::before {
+  content:''; display:inline-block; width:20px; height:2px; background:#ff1744;
+}
+
+.praise-bubble {
+  background: linear-gradient(135deg, rgba(20,80,30,.9), rgba(0,70,55,.9));
+  border-radius: 14px; padding: 18px 20px 18px 24px;
+  border-left: 5px solid #00e676; color: #fff; margin: 14px 0;
+  box-shadow: 0 6px 28px rgba(0,100,40,.3), inset 0 1px 0 rgba(255,255,255,.08);
+  font-size: .97rem; line-height: 1.65;
+  animation: roast-in .3s ease-out;
+}
+.debate-bubble {
+  background: linear-gradient(135deg, rgba(20,28,120,.9), rgba(60,10,120,.9));
+  border-radius: 14px; padding: 18px 20px 18px 24px;
+  border-left: 5px solid #7986cb; color: #fff; margin: 14px 0;
+  box-shadow: 0 6px 28px rgba(26,35,126,.3), inset 0 1px 0 rgba(255,255,255,.08);
+  font-size: .97rem; line-height: 1.65;
+  animation: roast-in .3s ease-out;
+}
+.info-bubble {
+  background: rgba(255,255,255,.04);
+  border-radius: 14px; padding: 18px 20px 18px 24px;
+  border-left: 5px solid #40c4ff; color: #dde8e2; margin: 14px 0;
+  font-size: .97rem; line-height: 1.65;
+}
+.bubble-agent-tag {
+  font-size:.72rem; font-weight:700; letter-spacing:1.5px;
+  text-transform:uppercase; opacity:.6; margin-right:6px;
+}
+
+/* ═══════════════════════════════════════════
+   PREDICTION ROWS
+   ═══════════════════════════════════════════ */
+.pred-row {
+  display:flex; align-items:center; gap:9px;
+  padding:11px 15px; border-radius:10px; margin-bottom:7px;
+  background: rgba(255,255,255,.03);
+  border: 1px solid rgba(255,255,255,.06);
+  flex-wrap:wrap; transition: background .15s, transform .1s;
+}
+.pred-row:hover { background:rgba(255,255,255,.06); transform:translateX(2px); }
+.badge {
+  padding:3px 11px; border-radius:20px;
+  font-size:.65rem; font-weight:800; text-transform:uppercase;
+  white-space:nowrap; letter-spacing:.8px; flex-shrink:0;
+}
+.badge-pending { background:linear-gradient(90deg,#e65100,#f57f17); color:#fff; }
+.badge-correct { background:linear-gradient(90deg,#1b5e20,#00c853); color:#fff; }
+.badge-wrong   { background:linear-gradient(90deg,#b71c1c,#e53935); color:#fff; }
+
+/* ═══════════════════════════════════════════
+   LEADERBOARD
+   ═══════════════════════════════════════════ */
+.lb-wrap {
+  background: linear-gradient(180deg, rgba(0,40,10,.3), rgba(0,0,40,.3));
+  border: 1px solid rgba(255,255,255,.08);
+  border-radius: 16px; padding: 20px; margin-bottom: 10px;
+}
+.lb-header {
+  font-family:'Bebas Neue','Oswald',sans-serif;
+  font-size:1.5rem; letter-spacing:3px;
+  color:#ffd700; margin-bottom:16px; text-align:center;
+  text-shadow: 0 0 20px rgba(255,215,0,.4);
+}
+.lb-row {
+  display:flex; align-items:center; gap:12px;
+  padding:12px 16px; border-radius:11px; margin-bottom:7px;
+  background: rgba(255,255,255,.04);
+  border: 1px solid rgba(255,255,255,.07);
+  transition: background .15s;
+}
+.lb-row:hover { background:rgba(255,255,255,.08); }
+.lb-row.me {
+  border: 1px solid rgba(255,215,0,.5);
+  background: rgba(255,215,0,.07);
+  box-shadow: 0 0 15px rgba(255,215,0,.1);
+}
+.lb-rank {
+  font-family:'Bebas Neue','Oswald',sans-serif;
+  font-size:1.5rem; font-weight:400; min-width:44px; text-align:center;
+}
+.lb-name { font-weight:700; flex:1; font-size:.95rem; }
+.lb-stat { font-size:.78rem; color:#90caf9; }
+.lb-winrate {
+  font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600;
+  color:#ffd740; min-width:52px; text-align:right;
+}
+
+/* ═══════════════════════════════════════════
+   BLOB BOX
+   ═══════════════════════════════════════════ */
+.blob-box {
+  background: rgba(0,0,0,.6);
+  border: 1px solid rgba(0,229,255,.15);
+  border-radius: 8px; padding: 10px 14px;
+  font-family: 'Courier New', monospace;
+  font-size: .75rem; color: #80deea; word-break:break-all;
+  box-shadow: inset 0 0 20px rgba(0,229,255,.04), 0 0 10px rgba(0,229,255,.06);
+}
+
+/* ═══════════════════════════════════════════
+   SECTION HEADINGS
+   ═══════════════════════════════════════════ */
+.sec-head {
+  font-family:'Oswald',sans-serif;
+  font-size:1rem; font-weight:600; color:#a5d6a7;
+  text-transform:uppercase; letter-spacing:2.5px;
+  margin-bottom:14px; padding-bottom:8px;
+  border-bottom: 1px solid rgba(165,214,167,.15);
+  display:flex; align-items:center; gap:10px;
+}
+.sec-head::before {
+  content:''; display:inline-block; width:3px; height:18px;
+  background: linear-gradient(180deg,#69f0ae,#006633);
+  border-radius:2px;
+}
+
+/* ═══════════════════════════════════════════
+   NETWORK BADGE
+   ═══════════════════════════════════════════ */
+.network-badge {
+  display:inline-flex; align-items:center; gap:5px;
+  padding:5px 12px; border-radius:20px;
+  font-size:.65rem; font-weight:800; text-transform:uppercase; letter-spacing:1.2px;
+}
+.testnet {
+  background:linear-gradient(90deg,#7b1900,#bf360c);
+  color:#fff; border:1px solid rgba(255,100,0,.3);
+  box-shadow: 0 0 12px rgba(191,54,12,.3);
+}
+.mainnet {
+  background:linear-gradient(90deg,#1b5e20,#2e7d32);
+  color:#fff; border:1px solid rgba(0,200,83,.3);
+  box-shadow: 0 0 12px rgba(0,200,83,.25);
+}
+
+/* ═══════════════════════════════════════════
+   AUTOSAVE DOT
+   ═══════════════════════════════════════════ */
+.autosave-dot {
+  display:inline-block; width:7px; height:7px; border-radius:50%;
+  background:#69f0ae; margin-right:5px; animation:pulse 2s infinite;
+  box-shadow: 0 0 6px #69f0ae;
+}
+@keyframes pulse { 0%,100%{opacity:1; transform:scale(1);} 50%{opacity:.25; transform:scale(.8);} }
+
+/* ═══════════════════════════════════════════
+   SIDEBAR
+   ═══════════════════════════════════════════ */
+[data-testid="stSidebar"] {
+  background: linear-gradient(180deg, #04080a 0%, #050a06 50%, #06080d 100%) !important;
+  border-right: 1px solid rgba(165,214,167,.08) !important;
+  min-width: 272px !important;
+}
+
+/* ═══════════════════════════════════════════
+   INPUTS
+   ═══════════════════════════════════════════ */
+.stTextInput>div>div>input,
+.stSelectbox>div>div,
+.stTextArea textarea {
+  background: rgba(255,255,255,.04) !important;
+  border: 1px solid rgba(255,255,255,.12) !important;
+  color: #dde8e2 !important; border-radius: 9px !important;
+  transition: border-color .2s, box-shadow .2s;
+}
+.stTextInput>div>div>input:focus,
+.stTextArea textarea:focus {
+  border-color: rgba(105,240,174,.4) !important;
+  box-shadow: 0 0 0 3px rgba(105,240,174,.08) !important;
+}
+
+/* ═══════════════════════════════════════════
+   BUTTONS — USA flag gradient
+   ═══════════════════════════════════════════ */
+.stButton>button {
+  background: linear-gradient(135deg, #006633 0%, #001f5e 50%, #8b0000 100%);
+  color: #fff; border: 1px solid rgba(255,255,255,.12);
+  border-radius: 9px; font-family:'Oswald',sans-serif;
+  font-weight:600; letter-spacing:1.5px; text-transform:uppercase;
+  padding: 10px 22px; transition: all .2s;
+  box-shadow: 0 4px 16px rgba(0,0,0,.4);
+}
+.stButton>button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 24px rgba(0,0,0,.5), 0 0 20px rgba(105,240,174,.1);
+  border-color: rgba(105,240,174,.3);
+}
+.stButton>button:active { transform:translateY(0); }
+
+/* ═══════════════════════════════════════════
+   TABS
+   ═══════════════════════════════════════════ */
+.stTabs [data-baseweb="tab-list"] {
+  background: rgba(0,0,0,.2) !important;
+  border: 1px solid rgba(255,255,255,.06) !important;
+  border-radius: 10px; padding: 4px; gap: 2px;
+}
+.stTabs [data-baseweb="tab"] {
+  border-radius: 7px !important;
+  font-family:'Oswald',sans-serif !important;
+  font-weight:600 !important; font-size:.78rem !important;
+  letter-spacing:1px !important; text-transform:uppercase !important;
+  transition: background .2s !important;
+}
+.stTabs [aria-selected="true"] {
+  background: linear-gradient(135deg, #006633, #001a4d) !important;
+  color: #fff !important;
+  box-shadow: 0 2px 10px rgba(0,0,0,.4) !important;
+}
+
+/* ═══════════════════════════════════════════
+   LANDING FEATURE CARDS
+   ═══════════════════════════════════════════ */
+.feat-card {
+  position: relative; overflow:hidden;
+  background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(0,0,0,.15));
+  border: 1px solid rgba(255,255,255,.07);
+  border-radius: 16px; padding: 26px 20px; text-align:center;
+  transition: transform .25s, box-shadow .25s;
+  min-height: 200px;
+}
+.feat-card::after {
+  content:''; position:absolute; bottom:0; left:0; right:0; height:3px;
+  background: var(--accent-grad, linear-gradient(90deg,#006633,#69f0ae));
+  border-radius:0 0 16px 16px;
+}
+.feat-card:hover {
+  transform:translateY(-5px);
+  box-shadow:0 12px 36px rgba(0,0,0,.5), 0 0 0 1px rgba(255,255,255,.08);
+}
+.feat-icon { font-size:2.6rem; display:block; margin-bottom:12px; }
+.feat-title {
+  font-family:'Oswald',sans-serif; font-size:1rem; font-weight:600;
+  color:#a5d6a7; margin-bottom:10px; text-transform:uppercase; letter-spacing:1.5px;
+}
+.feat-desc { font-size:.8rem; color:#607d8b; line-height:1.6; }
+
+/* ═══════════════════════════════════════════
+   MISC
+   ═══════════════════════════════════════════ */
+#MainMenu,footer { visibility:hidden; }
+.block-container { padding-top:1.2rem; padding-bottom:2rem; }
+
+/* horizontal rule */
+hr { border-color: rgba(255,255,255,.06) !important; }
+
+/* expander */
+.streamlit-expanderHeader {
+  font-family:'Oswald',sans-serif !important;
+  letter-spacing:1px; font-size:.82rem !important;
+}
 </style>
 """, unsafe_allow_html=True)
 
@@ -304,47 +702,71 @@ with st.sidebar:
 if not st.session_state.logged_in:
     st.markdown("""
     <div class="hero">
-      <h1>⚽ WC2026 Grudge Agent</h1>
-      <p>Predict · Get Roasted · Hold Grudges · Never Forget — Powered by Walrus Memory</p>
-    </div>""", unsafe_allow_html=True)
+      <div class="hero-stripe"></div>
+      <div class="hero-inner">
+        <span class="hero-ball">⚽</span>
+        <h1>WC2026 Grudge Agent</h1>
+        <div class="subtitle">Predict · Get Roasted · Hold Grudges · Never Forget</div>
+        <div class="hero-badges">
+          <span class="hero-badge usa">🇺🇸 USA 2026</span>
+          <span class="hero-badge wc">⚽ 48 Teams · 104 Matches</span>
+          <span class="hero-badge walrus">🌊 Walrus Memory</span>
+          <span class="hero-badge" style="border-color:rgba(255,100,50,.5);background:rgba(255,80,30,.15);color:#ffab91">🔥 AI Roast Engine</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="ticker-wrap">
+      <div class="ticker-inner">
+        ⚽ WC2026 kicks off June 11, 2026 &nbsp;·&nbsp;
+        🏟️ MetLife Stadium hosts the Final &nbsp;·&nbsp;
+        🇺🇸 USA · 🇨🇦 Canada · 🇲🇽 Mexico co-hosting &nbsp;·&nbsp;
+        🏆 48 teams competing for glory &nbsp;·&nbsp;
+        🔥 Make your predictions — get roasted if you're wrong &nbsp;·&nbsp;
+        😤 The agent never forgets &nbsp;·&nbsp;
+        🧠 Powered by Walrus persistent memory &nbsp;·&nbsp;
+        ⚡ Login to start predicting &nbsp;·&nbsp;
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
     c1, c2, c3 = st.columns(3)
-    cards = [
-        ("🧠", "Persistent Memory", "Login with username + PIN. Every action saved to Walrus automatically. No data loss on refresh ever again."),
-        ("🔥", "AI Roast Engine", "Claude brutally roasts every wrong call — with full receipts from your past failures going back to session 1."),
-        ("😤", "Grudge System", "Wrong predictions are logged forever in a blob chain. The agent brings them up. Always. Across every session."),
+    feat_data = [
+        ("🧠", "Persistent Memory",  "rgba(0,188,212,.6)",  "linear-gradient(90deg,#006064,#00bcd4)",
+         "Login with username + PIN. Every action auto-saves to Walrus. No data loss on refresh, ever."),
+        ("🔥", "AI Roast Engine",    "rgba(244,67,54,.6)",   "linear-gradient(90deg,#b71c1c,#ff5722)",
+         "Claude brutally roasts every wrong call — with full receipts from your past failures."),
+        ("😤", "Grudge System",      "rgba(156,39,176,.6)",  "linear-gradient(90deg,#4a148c,#9c27b0)",
+         "Wrong predictions logged in a blob chain forever. The agent brings them up. Always."),
     ]
-    for col, (icon, title, desc) in zip([c1, c2, c3], cards):
+    for col, (icon, title, border, grad, desc) in zip([c1, c2, c3], feat_data):
         with col:
             st.markdown(f"""
-            <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-              border-radius:14px;padding:20px 24px;text-align:center;height:180px">
-              <div style="font-size:2.2rem">{icon}</div>
-              <div style="font-weight:700;margin:8px 0;color:#90caf9">{title}</div>
-              <div style="font-size:.83rem;color:#78909c">{desc}</div>
+            <div class="feat-card" style="--accent-grad:{grad}">
+              <span class="feat-icon">{icon}</span>
+              <div class="feat-title">{title}</div>
+              <div class="feat-desc">{desc}</div>
             </div>""", unsafe_allow_html=True)
 
     c4, c5 = st.columns(2)
     with c4:
         st.markdown("""
-        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-          border-radius:14px;padding:20px 24px;text-align:center">
-          <div style="font-size:2.2rem">🏆</div>
-          <div style="font-weight:700;margin:8px 0;color:#90caf9">Public Leaderboard</div>
-          <div style="font-size:.83rem;color:#78909c">See who's the best predictor across all users. Updated live after every resolution.</div>
+        <div class="feat-card" style="--accent-grad:linear-gradient(90deg,#f57f17,#ffd740)">
+          <span class="feat-icon">🏆</span>
+          <div class="feat-title">Public Leaderboard</div>
+          <div class="feat-desc">See who's the best predictor across all users. Rankings updated live on Walrus after every resolution.</div>
         </div>""", unsafe_allow_html=True)
     with c5:
         st.markdown("""
-        <div style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);
-          border-radius:14px;padding:20px 24px;text-align:center">
-          <div style="font-size:2.2rem">📖</div>
-          <div style="font-weight:700;margin:8px 0;color:#90caf9">Full Session Replay</div>
-          <div style="font-size:.83rem;color:#78909c">Every prediction, roast, hot take and grudge — timestamped and replayed in order.</div>
+        <div class="feat-card" style="--accent-grad:linear-gradient(90deg,#1565c0,#40c4ff)">
+          <span class="feat-icon">📖</span>
+          <div class="feat-title">Session Replay</div>
+          <div class="feat-desc">Full timestamped history — every prediction, roast, hot take and grudge — pulled from your Walrus blob chain.</div>
         </div>""", unsafe_allow_html=True)
 
     st.markdown("""
-    <div style="text-align:center;padding:24px;color:#546e7a">
-      👈 Register or Login in the sidebar to begin
+    <div style="text-align:center;padding:28px 0 8px;color:#37474f;font-size:.85rem;letter-spacing:.5px">
+      👈 Register or Login in the sidebar to begin your prediction journey
     </div>""", unsafe_allow_html=True)
     st.stop()
 
@@ -358,9 +780,32 @@ active_key = get_api_key()
 # Hero
 st.markdown(f"""
 <div class="hero">
-  <h1>⚽ WC2026 Grudge Agent</h1>
-  <p>Welcome back, <b>{state['username']}</b> — I remember everything you've ever gotten wrong. 😤</p>
-</div>""", unsafe_allow_html=True)
+  <div class="hero-stripe"></div>
+  <div class="hero-inner">
+    <span class="hero-ball">⚽</span>
+    <h1>WC2026 Grudge Agent</h1>
+    <div class="subtitle">Welcome back, <b style="color:#ffd700">{state['username']}</b> — I remember everything you've ever gotten wrong 😤</div>
+    <div class="hero-badges">
+      <span class="hero-badge usa">🇺🇸 USA 2026</span>
+      <span class="hero-badge wc">Jun 11 – Jul 19, 2026</span>
+      <span class="hero-badge walrus">🌊 Memory Active</span>
+    </div>
+  </div>
+</div>
+
+<div class="ticker-wrap">
+  <div class="ticker-inner">
+    ⚽ WC2026 kicks off June 11, 2026 &nbsp;·&nbsp;
+    🏟️ MetLife Stadium Final &nbsp;·&nbsp;
+    🇺🇸 USA · 🇨🇦 Canada · 🇲🇽 Mexico hosting &nbsp;·&nbsp;
+    🔥 Every wrong prediction is logged &nbsp;·&nbsp;
+    😤 Grudges held forever &nbsp;·&nbsp;
+    🧠 Walrus blob chain active &nbsp;·&nbsp;
+    ⚡ {state['username']} — make your predictions count &nbsp;·&nbsp;
+    🏆 Check the leaderboard &nbsp;·&nbsp;
+  </div>
+</div>
+""", unsafe_allow_html=True)
 
 # Stats
 s = state["stats"]
@@ -586,8 +1031,6 @@ with tab4:
 # TAB 5 — Leaderboard
 # ─────────────────────────────────────────────────────────────────────────────
 with tab5:
-    st.markdown('<div style="color:#90caf9;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;margin-bottom:14px">🏆 Public Leaderboard</div>', unsafe_allow_html=True)
-
     if st.button("🔄 Refresh Leaderboard", use_container_width=True):
         st.rerun()
 
@@ -597,26 +1040,29 @@ with tab5:
     if not entries:
         st.info("No leaderboard data yet. Be the first to make and resolve a prediction!")
     else:
+        st.markdown('<div class="lb-wrap">', unsafe_allow_html=True)
+        st.markdown('<div class="lb-header">🏆 WORLD CUP PREDICTION RANKINGS</div>', unsafe_allow_html=True)
         for i, e in enumerate(entries):
             is_me = e["username"].lower() == st.session_state.username.lower()
-            highlight = "border:1px solid #ffd740;" if is_me else ""
-            total = e["correct"] + e["wrong"]
+            me_cls = "me" if is_me else ""
+            you_tag = "&nbsp;<span style='font-size:.62rem;color:#ffd700;font-weight:800;letter-spacing:1px'>YOU</span>" if is_me else ""
             st.markdown(
-                f'<div class="lb-row" style="{highlight}">'
+                f'<div class="lb-row {me_cls}">'
                 f'<span class="lb-rank">{rank_emoji(i)}</span>'
-                f'<span class="lb-name">{e["username"]}{"  👈 you" if is_me else ""}</span>'
-                f'<span class="lb-stat">✅ {e["correct"]} · ❌ {e["wrong"]} · 📊 {e["win_rate"]}</span>'
-                f'<span style="color:#546e7a;font-size:.7rem;margin-left:auto">{e.get("last_updated","")[:10]}</span>'
+                f'<span class="lb-name">{e["username"]} {you_tag}</span>'
+                f'<span class="lb-stat">✅ {e["correct"]} &nbsp;❌ {e["wrong"]}</span>'
+                f'<span class="lb-winrate">{e["win_rate"]}</span>'
                 f'</div>',
                 unsafe_allow_html=True,
             )
+        st.markdown('</div>', unsafe_allow_html=True)
 
     lb_blob = get_leaderboard_blob_id()
     if lb_blob:
         st.markdown("---")
-        st.markdown("**Leaderboard Blob ID** (public proof on Walrus):")
+        st.markdown('<div class="sec-head">Leaderboard Blob ID</div>', unsafe_allow_html=True)
         st.markdown(f'<div class="blob-box">{lb_blob}</div>', unsafe_allow_html=True)
-        st.markdown(f"[🔍 View on WalrusScan]({get_walrus_explorer_url(lb_blob)})")
+        st.markdown(f"[🔍 Verify on WalrusScan ↗]({get_walrus_explorer_url(lb_blob)})")
 
 
 # ─────────────────────────────────────────────────────────────────────────────
