@@ -21,7 +21,7 @@ from utils.state_manager import (
     state_to_walrus_payload, walrus_payload_to_state,
 )
 from utils.roast_engine import get_roast, get_praise, get_debate_response, get_grudge_summary
-from utils.auth import register_user, login_user, update_user_blob, _hash_credentials, _load_registry
+from utils.auth import register_user, login_user, login_by_blob_id, update_user_blob
 from utils.leaderboard import get_leaderboard, update_leaderboard, get_leaderboard_blob_id
 from utils.wc2026_data import ALL_TEAMS, NOTABLE_MATCHES, TOURNAMENT_INFO
 
@@ -501,9 +501,10 @@ hr { border-color: rgba(255,255,255,.06) !important; }
 # Helpers
 # ══════════════════════════════════════════════════════════════════════════════
 def get_api_key() -> str:
+    """Read API key: st.secrets → session_state → env var."""
     try:
-        k = st.secrets.get("ANTHROPIC_API_KEY", "")
-        if k: return k
+        if "ANTHROPIC_API_KEY" in st.secrets:
+            return str(st.secrets["ANTHROPIC_API_KEY"])
     except Exception:
         pass
     if st.session_state.get("api_key", ""):
@@ -576,26 +577,31 @@ with st.sidebar:
     st.markdown("---")
 
     if not st.session_state.logged_in:
-        # ── Auth panel ──
-        tabs = st.tabs(["🔑 Login", "📝 Register"])
+        # ── Auth panel — 3 tabs ──
+        tabs = st.tabs(["🔑 Login", "📝 Register", "🔗 Blob ID"])
 
+        # ── TAB: Login ──
         with tabs[0]:
+            st.markdown(
+                '<div style="font-size:.75rem;color:#78909c;margin-bottom:10px">'
+                'Login with the username + PIN you registered with.</div>',
+                unsafe_allow_html=True,
+            )
             lu = st.text_input("Username", key="login_u", placeholder="your_username")
             lp = st.text_input("4-digit PIN", key="login_p", type="password", max_chars=4)
             if st.button("Login →", use_container_width=True, key="btn_login"):
                 if lu.strip() and lp.strip():
-                    with st.spinner("Loading your memory from Walrus..."):
-                        ok, msg, payload = login_user(lu.strip(), lp.strip())
+                    ok, msg, payload = login_user(lu.strip(), lp.strip())
                     if ok:
-                        st.session_state.state = walrus_payload_to_state(payload)
-                        st.session_state.state["blob_id"] = msg
-                        st.session_state.state["blob_chain"] = payload.get("blob_chain", [msg])
-                        st.session_state.username   = lu.strip()
-                        st.session_state.pin        = lp.strip()
-                        st.session_state.logged_in  = True
-                        st.session_state.last_blob_id = msg
+                        st.session_state.state        = walrus_payload_to_state(payload)
+                        st.session_state.state["blob_id"] = msg if msg != "new_user" else None
+                        st.session_state.state["blob_chain"] = payload.get("blob_chain", [])
+                        st.session_state.username     = lu.strip()
+                        st.session_state.pin          = lp.strip()
+                        st.session_state.logged_in    = True
+                        st.session_state.last_blob_id = msg if msg not in ("new_user", "offline") else ""
                         st.session_state.agent_response = (
-                            f"Welcome back **{lu.strip()}**! I remember EVERYTHING. 🧠"
+                            f"Welcome back **{lu.strip()}**! Ready to track predictions. 🧠"
                         )
                         st.session_state.last_action = "💬"
                         st.rerun()
@@ -604,22 +610,59 @@ with st.sidebar:
                 else:
                     st.warning("Fill in both fields.")
 
+        # ── TAB: Register ──
         with tabs[1]:
-            ru = st.text_input("Choose username", key="reg_u", placeholder="football_prophet")
-            rp = st.text_input("Choose 4-digit PIN", key="reg_p", type="password", max_chars=4)
-            rp2 = st.text_input("Confirm PIN", key="reg_p2", type="password", max_chars=4)
+            st.markdown(
+                '<div style="font-size:.75rem;color:#78909c;margin-bottom:10px">'
+                'Create an account instantly — no connection needed.</div>',
+                unsafe_allow_html=True,
+            )
+            ru  = st.text_input("Choose username", key="reg_u", placeholder="football_prophet")
+            rp  = st.text_input("Choose 4-digit PIN", key="reg_p",  type="password", max_chars=4)
+            rp2 = st.text_input("Confirm PIN",        key="reg_p2", type="password", max_chars=4)
             if st.button("Create Account →", use_container_width=True, key="btn_reg"):
                 if not (ru.strip() and rp.strip() and rp2.strip()):
                     st.warning("Fill in all fields.")
                 elif rp != rp2:
                     st.error("PINs don't match.")
                 else:
-                    with st.spinner("Creating your account on Walrus..."):
-                        ok, result = register_user(ru.strip(), rp.strip())
+                    ok, result = register_user(ru.strip(), rp.strip())
                     if ok:
-                        st.success(f"Account created! Login now.")
+                        st.success("✅ Account created! Go to Login tab.")
                     else:
                         st.error(result)
+
+        # ── TAB: Blob ID login ──
+        with tabs[2]:
+            st.markdown(
+                '<div style="font-size:.75rem;color:#78909c;margin-bottom:10px">'
+                'Have a blob ID from a previous session? Paste it here to restore '
+                'your predictions on any device.</div>',
+                unsafe_allow_html=True,
+            )
+            bid_input = st.text_input("Paste your Blob ID", key="blob_login",
+                                      placeholder="AbCdEf123...")
+            if st.button("Load from Walrus →", use_container_width=True, key="btn_blob"):
+                if bid_input.strip():
+                    with st.spinner("Loading from Walrus..."):
+                        ok, msg, payload = login_by_blob_id(bid_input.strip())
+                    if ok:
+                        st.session_state.state        = walrus_payload_to_state(payload)
+                        st.session_state.state["blob_id"] = msg
+                        st.session_state.state["blob_chain"] = payload.get("blob_chain", [msg])
+                        st.session_state.username     = payload.get("username", "user")
+                        st.session_state.pin          = ""
+                        st.session_state.logged_in    = True
+                        st.session_state.last_blob_id = msg
+                        st.session_state.agent_response = (
+                            f"Memory restored! I remember everything. 🧠"
+                        )
+                        st.session_state.last_action = "💬"
+                        st.rerun()
+                    else:
+                        st.error(msg)
+                else:
+                    st.warning("Paste a blob ID first.")
 
     else:
         # ── Logged-in panel ──
@@ -633,7 +676,7 @@ with st.sidebar:
         # API Key
         secret_set = False
         try:
-            secret_set = bool(st.secrets.get("ANTHROPIC_API_KEY", ""))
+            secret_set = "ANTHROPIC_API_KEY" in st.secrets
         except Exception:
             pass
 
@@ -655,7 +698,8 @@ with st.sidebar:
             if bid:
                 st.success("✅ Saved!")
             else:
-                st.error("Save failed. Walrus testnet may be down.")
+                net = get_network_name()
+                st.error(f"Save failed. Walrus {net} unreachable — try again shortly.")
 
         # Show last blob ID
         if st.session_state.last_blob_id:
@@ -663,6 +707,11 @@ with st.sidebar:
             st.code(st.session_state.last_blob_id, language=None)
             st.markdown(
                 f"[🔍 WalrusScan]({get_walrus_explorer_url(st.session_state.last_blob_id)})"
+            )
+            st.markdown(
+                '<div style="font-size:.68rem;color:#ffd740;margin-top:4px">'
+                '💡 Save this ID to restore your data on any device via the Blob ID tab.</div>',
+                unsafe_allow_html=True,
             )
 
         st.markdown("---")
