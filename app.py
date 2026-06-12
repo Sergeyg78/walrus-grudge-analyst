@@ -513,7 +513,7 @@ def get_api_key() -> str:
 
 
 def auto_save() -> str | None:
-    """Save current state to Walrus and update user registry. Returns blob_id."""
+    """Save current state to Walrus and update Gist registry. Returns blob_id."""
     if not st.session_state.get("logged_in"):
         return None
     payload = state_to_walrus_payload(st.session_state.state)
@@ -524,7 +524,7 @@ def auto_save() -> str | None:
         if blob_id not in chain:
             chain.append(blob_id)
         st.session_state.state["blob_chain"] = chain[-20:]
-        # Update registry
+        # Update Gist registry with new blob ID
         update_user_blob(
             st.session_state.username,
             st.session_state.pin,
@@ -536,6 +536,11 @@ def auto_save() -> str | None:
             st.session_state.state["stats"],
         )
         st.session_state.last_blob_id = blob_id
+        st.session_state.save_failed = False
+    else:
+        # Mark save as failed so UI can warn the user
+        st.session_state.save_failed = True
+        print(f"[AutoSave] Walrus save failed for {st.session_state.username}")
     return blob_id
 
 
@@ -557,6 +562,7 @@ DEFAULTS = {
     "last_blob_id":   "",
     "auth_mode":      "login",   # "login" | "register"
     "active_tab":     0,
+    "save_failed":    False,
 }
 for k, v in DEFAULTS.items():
     if k not in st.session_state:
@@ -884,6 +890,22 @@ if st.session_state.agent_response:
         f'<div class="{bc}">🤖 <b>Agent:</b> {st.session_state.agent_response}</div>',
         unsafe_allow_html=True,
     )
+
+# ── Save failure warning ──
+if st.session_state.get("save_failed"):
+    col_warn, col_retry = st.columns([4, 1])
+    with col_warn:
+        st.warning("⚠️ Walrus save failed — your latest actions are NOT persisted yet. Click Retry Save.")
+    with col_retry:
+        if st.button("🔄 Retry Save", use_container_width=True):
+            with st.spinner("Retrying Walrus save..."):
+                bid = auto_save()
+            if bid:
+                st.success(f"✅ Saved! Blob: {bid[:12]}...")
+                st.session_state.save_failed = False
+                st.rerun()
+            else:
+                st.error("Still failing. Try again in a moment.")
 
 # Auto-save indicator
 if st.session_state.last_blob_id:
