@@ -21,7 +21,7 @@ from utils.state_manager import (
     state_to_walrus_payload, walrus_payload_to_state,
 )
 from utils.roast_engine import get_roast, get_praise, get_debate_response, get_grudge_summary
-from utils.auth import register_user, login_user, login_by_blob_id, update_user_blob
+from utils.auth import register_user, login_user, login_by_blob_id, update_user_blob, is_gist_configured
 from utils.leaderboard import get_leaderboard, update_leaderboard, get_leaderboard_blob_id
 from utils.wc2026_data import ALL_TEAMS, NOTABLE_MATCHES, TOURNAMENT_INFO
 
@@ -688,6 +688,12 @@ with st.sidebar:
                                help="Free tier works fine")
             if ak.strip():
                 st.session_state.api_key = ak.strip()
+
+        # Gist registry status
+        if is_gist_configured():
+            st.success("🗄️ Gist registry active ✅")
+        else:
+            st.warning("⚠️ No Gist configured — logins won\'t persist across refreshes")
 
         st.markdown("---")
 
